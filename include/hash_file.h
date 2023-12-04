@@ -1,5 +1,6 @@
 #ifndef HASH_FILE_H
 #define HASH_FILE_H
+#define TABLE_SIZE 3
 
 typedef enum HT_ErrorCode {
   HT_OK,
@@ -12,57 +13,58 @@ typedef struct Record {
 	char surname[20];
 	char city[20];
 } Record;
+// #pragma pack(pop)  // Restore default packing alignment
 
 // Δομή που αποθηκεύει ορισμένες πληροφορίες σχετικά με ένα αρχείο (κατακερματισμού).
 typedef struct HT_Info {
 	char fileType [20];				// eg. 'hash' file
-	char fileName[20];
-	int indexDesc;					// θέση στον πίνακα
+	char fileName [20];
+	char hash_field [20];			// Το κλειδί του πίνακα κατακερματισμού (eg. id).
 	int fileDesc;
-	char hash_field[10];			// Το κλειδί του πίνακα κατακερματισμού (eg. id).
-	BF_Block *next;
 	int total_num_of_recs;			// συνολικός αριθμός εγγραφών σε όλο το αρχείο
-	int num_of_blocks;				// συνολικός αριθμός μπλοκ στο αρχείο
-	int HT_Info_size;				// sizeof(HT_Info)
+	int num_of_blocks;				// συνολικός αριθμός μπλοκ στο Hash Table
+	int globalDepth;
 } HT_Info;
 
 
 typedef struct Block_Info {
-	int block_id;				// αναγνωριστικός αριθμός του μπλοκ
-	int directories_hash[8];	// το μπλοκ χωράει έως 8 directories
-	int num_of_directories;		// αριθμός των directories που περιέχει.
-	BF_Block* next;				// δείκτης στο επόμενο μπλοκ του αρχείου.
+	int block_id;						// αναγνωριστικός αριθμός του μπλοκ
+	int bucket_size;					// αριθμός των records που περιέχει
+	int local_depth;					// τοπικό βάθος του bucket
+	// int hashvalue;						// temp variable for debugging
+	int buddiesBoolean;			// temp to see if it has any buddies
 } Block_Info;
 
-typedef struct Directory {
-	int directory_id;			// αναγνωριστικός αριθμός του Directory
-	int bucket_owner_id;		// αναγνωριστικός αριθμός του directory που έχει το bucket
-	int bucket_id;			// αναγνωριστικός αριθμός του bucket
-    int local_depth;		// συνολικός αριθμός εγγραφών στο bucket
-	int bucket_size;
-    BF_Block *bucket;
-	int bucket_num;			// συνολικός αριθμός buckets στο Directory
-	int hash_value;			// αναγνωριστικός αριθμός bucket
-	int directory_size_bytes;	// sizeof(Bucket)
-	int buddies;				// 1: yes, 0: no
-} Directory;
+// typedef struct Directory {
+// 	// int bucket_owner_id[][2];		// αναγνωριστικός αριθμός του directory που έχει το bucket
+// 	int block_id;				// αναγνωριστικός αριθμός του μπλοκ στο οποίο βρίσκεται το directory.
+// 	int bucket_id;				// αναγνωριστικός αριθμός του bucket του directory
+//     int local_depth;			// συνολικός αριθμός εγγραφών στο bucket
+// 	int bucket_size;
+//     void *bucket;
+// 	int bucket_num;				// συνολικός αριθμός buckets στο Directory
+// 	int hash_value;				// αναγνωριστικός αριθμός bucket
+// 	int directory_size_bytes;	// sizeof(Bucket)
+// 	int buddies;				// 1: yes, 0: no
+// } Directory;
 
 
-// Hash table structure
-typedef struct HashTable {
-    int block_id;				// αναγνωριστικός αριθμός του μπλοκ
-	int global_depth;      		// Global depth of the directory
-    int num_of_directories;		// συνολικός αριθμός buckets στο ευρετήριο
-	Directory* directory;
-	int* directory_ids;			// αναγνωριστικός αριθμός όλων των directories
-	int HashTable_size;			// sizeof(HashTable)
-} HashTable;
+// // Hash table structure
+// typedef struct HashTable {
+//     int block_id;				// αναγνωριστικός αριθμός του μπλοκ
+// 	int global_depth;      		// Global depth of the directory
+//     int num_of_buckets;
+// 	int* block_ids;			// αναγνωριστικός αριθμός όλων των directories
+// 	int HashTable_size;			// sizeof(HashTable)
+// } HashTable;
 
 
 typedef struct {
-	int place;				// θέση στον πίνακα
-	BF_Block *firstBlock;	// δείκτης στο 1ο μπλοκ του αρχείου
+	int fd;					// αναγνωριστικός αριθμός του αρχείου
 	char filename [20];
+	int *hashTable;
+	// void *INFO;
+	// BF_Block *infoBlock;
 } OpenFileInfo;
 
 
@@ -131,16 +133,10 @@ HT_ErrorCode HT_PrintAllEntries(
  * όλα τα ανοιχτά αρχεία, αποδίδοντας τους μια τιμή int* indexDesc που αντιστοιχεί στην θέση στην οποία βρισκεται
  * το αρχείο που μόλις ανοίχτηκε. 
  */
-HT_ErrorCode HT_Create_File_Array (
-	void* fileArray
-	);
-
-
-HT_ErrorCode HT_Destroy_File_Array(
-	void* fileArray
-	);
 
 void HT_PrintMetadata(void *data);
+
+void Print_Hash_Table(int *hash_table, HT_Info *info);
 
 
 /*
@@ -152,8 +148,6 @@ unsigned int hash(unsigned int key, unsigned int depth);
 
 int max_bits(int maxNumber);
 
-void HashTable_resize(HashTable* hash_table);
-
-void HashTable_deallocate(HashTable* hash_table);
+void HashTable_resize(int** hash_table, HT_Info *info);
 
 #endif // HASH_FILE_H
