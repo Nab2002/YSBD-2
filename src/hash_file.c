@@ -200,7 +200,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
     openFiles[indexDesc].hashTable[hashValue] = blockInfo.block_id;
     blockInfo.bucket_size = 0;
     blockInfo.local_depth = 1;
-    blockInfo.buddiesBoolean = 0;
+    blockInfo.buddies = 0;
 
     // "Καθαρίζουμε" το καινούριο block από τυχόντα σκουπίδια που περιείχε η μνήμη.
     memset(bucketData, 0, BF_BLOCK_SIZE);
@@ -265,17 +265,28 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
 
       CALL_BF(BF_GetBlockCounter(fd, &info->num_of_blocks));
       blockInfo.block_id = info->num_of_blocks-1;
+      
+      blockInfo.bucket_size = 0;
+      blockInfo.buddies = 0;
+      blockInfo.local_depth = ptr->local_depth;
 
+      if(hashValue & 1 == 1)
+        openFiles[indexDesc].hashTable[hashValue] = blockInfo.block_id;
+        
+      else
+        openFiles[indexDesc].hashTable[(hashValue<<1)+1] = blockInfo.block_id;
+
+
+      printf("openFiles[0].hashTable[%d]: %d\n\n ", hashValue, openFiles[indexDesc].hashTable[hashValue]);
       int numOfPlacesInTheTable = power(info->globalDepth);
       blockInfo.block_id = info->num_of_blocks - 1;
       for(int l = 0; l < numOfPlacesInTheTable; l ++)
-        if(openFiles[indexDesc].hashTable[l] == -1) {
-          openFiles[indexDesc].hashTable[l] = blockInfo.block_id;
+        if(l%2 != 0 && (openFiles[indexDesc].hashTable[l] == -1)) {
+          openFiles[indexDesc].hashTable[l] = openFiles[indexDesc].hashTable[l-1];
+            if(openFiles[indexDesc].hashTable[l-1] == blockInfo.block_id)
+              blockInfo.buddies++;
         }
-
-      blockInfo.bucket_size = 0;
-      blockInfo.buddiesBoolean = 0;
-      blockInfo.local_depth = ptr->local_depth;
+      
 
       Print_Hash_Table(openFiles[indexDesc].hashTable, info);
 
@@ -285,6 +296,8 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
     }
     else if(ptr->local_depth < info->globalDepth) {
       printf("L O C A L  D E P T H  <  G L O B A L  D E P T H\n\n");
+      ptr->local_depth++;
+
       BF_Block_Init(&newBucket);
       CALL_BF(BF_AllocateBlock(fd, newBucket));
       newBucketData = BF_Block_GetData(newBucket);
@@ -292,11 +305,29 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
       CALL_BF(BF_GetBlockCounter(fd, &info->num_of_blocks));
       blockInfo.block_id = info->num_of_blocks-1;
       blockInfo.bucket_size = 0;
-      blockInfo.buddiesBoolean = 0;
+      blockInfo.buddies = 0;
       blockInfo.local_depth = ptr->local_depth;
-
+      openFiles[indexDesc].hashTable[hashValue] = blockInfo.block_id;
       Print_Hash_Table(openFiles[indexDesc].hashTable, info);
 
+      int numOfPlacesInTheTable = power(info->globalDepth);
+      for(int l = 0; l < numOfPlacesInTheTable; l ++) {
+        BF_Block *buddies;
+
+        if(openFiles[indexDesc].hashTable[l] == blockInfo.block_id ) {
+          BF_Block_Init(&buddies);
+          CALL_BF(BF_GetBlock(fd, openFiles[indexDesc].hashTable[l], buddies));
+          Block_Info *buddiesData = (Block_Info *)BF_Block_GetData(buddies);
+            if(blockInfo.buddies < buddiesData->buddies) {
+              openFiles[indexDesc].hashTable[l] = blockInfo.block_id;
+              buddiesData->buddies--;
+              blockInfo.buddies++;
+            }
+          BF_Block_SetDirty(buddies);
+          CALL_BF(BF_UnpinBlock(buddies));
+          BF_Block_Destroy(&buddies);
+        }
+      }
 
       memset(newBucketData, 0, sizeof(Record));
       memcpy(newBucketData, &blockInfo, sizeof(Block_Info));
@@ -452,16 +483,14 @@ void HashTable_resize(int **hash_table, HT_Info *info) {
 
   int *new_hash_table = (int *)malloc(newSize * sizeof(int));
   
+  int i = 0;
   // Copy old elements to the new memory location
-  for (int i = 0; i < newSize; i++) {
-    if (i % 2 == 0 && i > 0) {
-      for(int j = i-1; j < newSize; j++) {
-        new_hash_table[i] = (*hash_table)[j];
-        break;
-      }
-    }
+  for (int j = 0; j < newSize / 2; j ++) {
+    new_hash_table[i] = (*hash_table)[j];
+    i += 2 ;
   }
-  new_hash_table[0] = (*hash_table)[0];
+
+
   for(int i = 0; i < newSize; i++) {
     if (i % 2 != 0)
       new_hash_table[i] = -1;
