@@ -40,7 +40,7 @@ HT_ErrorCode HT_Init() {
       
       for (int j = 0; j < TABLE_SIZE; ++j) {
         openFiles[i].hashTable[j] = -1;
-        printf("openFiles[%d].hashTable[%d] = %d\n", i, j, openFiles[i].hashTable[j]);
+        // printf("openFiles[%d].hashTable[%d] = %d\n", i, j, openFiles[i].hashTable[j]);
       }
     }
     else {
@@ -168,17 +168,17 @@ HT_ErrorCode HT_CloseFile(int indexDesc) {
 /* * * * * * * * * HT_InsertEntry * * * * * * * * */
 HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
   int fd = openFiles[indexDesc].file_desc;
-  printf("\n\nI N S E R T \n\n");
+  // printf("\n\nI N S E R T \n\n");
 
   // Ο δείκτης *info δείχνει στα μεταδεδομένα του 1ου block.
   HT_Info *info = (HT_Info *)BF_Block_GetData(openFiles[indexDesc].info);
 
   // Εκτύπωση του πίνακα κατακερατισμού.
-  Print_Hash_Table(openFiles[indexDesc].hashTable, info);
+  // Print_Hash_Table(openFiles[indexDesc].hashTable, info);
 
   // Υπολογίζουμε την τιμή κατακερματισμού του εκάστοτε record.id.
   int hashValue = hash(record.id, info->globalDepth);
-  printf("hash value: %d, info->globalDepth)%d\n\n", hashValue, info->globalDepth);
+  // printf("hash value: %d, info->globalDepth%d\n\n", hashValue, info->globalDepth);
 
   BF_Block *bucket;           // Το bucket στο οποίο αντστοιχεί το record, με βάση το αρχικό hashvalue του, άσχετα με το αν χωράει σε αυτό.
   BF_Block *newBucket;        // Σε περίπτωση που χρειαστεί να δημιουργήσυμε καινούριο bucket.
@@ -235,8 +235,8 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
     // Αυξάνουμε το bucket_size, και το total_num_of_recs
     ptr->bucket_size ++;
     info->total_num_of_recs ++;
-    printf("hash: %d, ID: %d, name: %s, surname: %s, city: %s\n", hashValue, recordinBlock->id, recordinBlock->name, recordinBlock->surname, recordinBlock->city);
-    printf("Eggrafes mexri stigmhs sto bucket %d: %d\n\n", hashValue, ptr->bucket_size);
+    // printf("hash: %d, ID: %d, name: %s, surname: %s, city: %s\n", hashValue, recordinBlock->id, recordinBlock->name, recordinBlock->surname, recordinBlock->city);
+    // printf("Eggrafes mexri stigmhs sto bucket %d: %d\n\n", hashValue, ptr->bucket_size);
     
     // Κάνουμε το bucket (block) dirty, unpin και destroy, αφού δεν θα το χρειαστούμε άλλο
     BF_Block_SetDirty(bucket);
@@ -247,12 +247,11 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
     return HT_OK;
   }
   else {
-    printf("\n\n- - - - - - - - - D E N  X W R A E I - - - - - - - - -\n");
     // Τ Ο Π Ι Κ Ο  Β Α Θ Ο Σ  ==  Ο Λ Ι Κ Ο  Β Α Θ Ο Σ
     if(ptr->local_depth == info->globalDepth) {// Σε αυτήν την περίπτωση η εγγραφή δεν χωράει στο block.
-      printf("\nL O C A L  D E P T H  ==  G L O B A L  D E P T H\n\n");
+      // printf("\nL O C A L  D E P T H  ==  G L O B A L  D E P T H\n\n");
       // (1) Διπλασιάζουμε τον πίνακα κατακερματισμού.
-      printf("Eggrafh pros eisagwgh:\nhash: %d, ID: %d, name: %s, surname: %s, city: %s\n\nPalies eggrafes:\n", hashValue, record.id, record.name, record.surname, record.city);
+      // printf("Eggrafh pros eisagwgh:\nhash: %d, ID: %d, name: %s, surname: %s, city: %s\n\nPalies eggrafes:\n", hashValue, record.id, record.name, record.surname, record.city);
 
       info->globalDepth ++;
       ptr->local_depth ++;
@@ -277,7 +276,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
         openFiles[indexDesc].hashTable[(hashValue<<1)+1] = blockInfo.block_id;
 
 
-      printf("openFiles[0].hashTable[%d]: %d\n\n ", hashValue, openFiles[indexDesc].hashTable[hashValue]);
+      // printf("openFiles[0].hashTable[%d]: %d\n\n ", hashValue, openFiles[indexDesc].hashTable[hashValue]);
       int numOfPlacesInTheTable = power(info->globalDepth);
       blockInfo.block_id = info->num_of_blocks - 1;
       for(int l = 0; l < numOfPlacesInTheTable; l ++)
@@ -288,14 +287,14 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
         }
       
 
-      Print_Hash_Table(openFiles[indexDesc].hashTable, info);
+      // Print_Hash_Table(openFiles[indexDesc].hashTable, info);
 
 
       memset(newBucketData, 0, sizeof(Record));
       memcpy(newBucketData, &blockInfo, sizeof(Block_Info));
     }
     else if(ptr->local_depth < info->globalDepth) {
-      printf("L O C A L  D E P T H  <  G L O B A L  D E P T H\n\n");
+      // printf("L O C A L  D E P T H  <  G L O B A L  D E P T H\n\n");
       ptr->local_depth++;
 
       BF_Block_Init(&newBucket);
@@ -308,7 +307,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
       blockInfo.buddies = 0;
       blockInfo.local_depth = ptr->local_depth;
       openFiles[indexDesc].hashTable[hashValue] = blockInfo.block_id;
-      Print_Hash_Table(openFiles[indexDesc].hashTable, info);
+      // Print_Hash_Table(openFiles[indexDesc].hashTable, info);
 
       int numOfPlacesInTheTable = power(info->globalDepth);
       for(int l = 0; l < numOfPlacesInTheTable; l ++) {
@@ -370,7 +369,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
         currentBucket = ptrNew;
       }
       else {
-        printf("- - - A N A D R O M H - - -\n");
+        // printf("- - - A N A D R O M H - - -\n");
 
         BF_Block_SetDirty(newBucket);
         CALL_BF(BF_UnpinBlock(newBucket));
@@ -379,7 +378,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
         BF_Block_SetDirty(bucket);
         CALL_BF(BF_UnpinBlock(bucket));
         BF_Block_Destroy(&bucket);
-
+        info->total_num_of_recs--;
         HT_InsertEntry(indexDesc, *records);  
         flag = 1;
 
@@ -414,8 +413,8 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
         }
         currentBucket->bucket_size ++;
 
-        printf("hash: %d, ID: %d, name: %s, surname: %s, city: %s\n", hashValue, records->id, records->name, records->surname, records->city);
-        printf("Eggrafes mexri stigmhs sto bucket me id %d: %d\n\n", currentBucket->block_id, (currentBucket->bucket_size));
+        // printf("hash: %d, ID: %d, name: %s, surname: %s, city: %s\n", hashValue, records->id, records->name, records->surname, records->city);
+        // printf("Eggrafes mexri stigmhs sto bucket me id %d: %d\n\n", currentBucket->block_id, (currentBucket->bucket_size));
       }
     }
   }
@@ -431,10 +430,60 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
 }
 
 HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
+    // Έλεγχος αν το αρχείο είναι ανοιχτό
+    if (openFiles[indexDesc].file_desc == -1) {
+        printf("Error: File is not open.\n");
+        return HT_ERROR;
+    }
+
+    // Λήψη του block που περιέχει τα μεταδεδομένα
+    BF_Block* infoBlock;
+    BF_Block_Init(&infoBlock);
+    CALL_BF(BF_GetBlock(openFiles[indexDesc].file_desc, 0, infoBlock));
+
+    // Παίρνω τα μεταδεδομένa
+    HT_Info* info = (HT_Info*)BF_Block_GetData(infoBlock);
+    printf("File Type: %s\n", info->fileType);
+    printf("File Name: %s\n", info->fileName);
+    printf("Hash Field: %s\n", info->hash_field);
+    printf("Total Number of Records: %d\n", info->total_num_of_recs);
+    printf("Number of Blocks: %d\n", info->num_of_blocks);
+    printf("Global Depth: %d\n", info->globalDepth);
+
+    // Επανάληψη για κάθε block και εκτύπωση των records
+    for (int i = 1; i < info->num_of_blocks; ++i) {
+        BF_Block* block;
+        BF_Block_Init(&block);
+
+        // Λήψη του block που περιέχει τα records
+        CALL_BF(BF_GetBlock(openFiles[indexDesc].file_desc, i, block));
+
+        // Παίρνω το block info
+        Block_Info* blockInfo = (Block_Info*)BF_Block_GetData(block);
+        printf("\nBlock ID: %d\n", blockInfo->block_id);
+        printf("Local Depth: %d\n", blockInfo->local_depth);
+        printf("Bucket Size: %d\n", blockInfo->bucket_size);
+        printf("Buddies: %d\n", blockInfo->buddies);
+
+        // Επανάληψη για κάθε record στο block και εκτύπωση
+        for (int j = 1; j <= blockInfo->bucket_size; ++j) {
+            Record* record = (Record*)((char*)blockInfo + j * sizeof(Record));
+            printf("ID: %d, Name: %s, Surname: %s, City: %s\n", record->id, record->name, record->surname, record->city);
+        }
+
+        // Unpin και καταστροφή του block
+        CALL_BF(BF_UnpinBlock(block));
+        BF_Block_Destroy(&block);
+    }
+
+    // Unpin και καταστροφή του block μεταδεδομένων
+    CALL_BF(BF_UnpinBlock(infoBlock));
+    BF_Block_Destroy(&infoBlock);
 
     return HT_OK;
-
 }
+
+
 
 
 
@@ -478,7 +527,7 @@ int power(int num) {
 }
 
 void HashTable_resize(int **hash_table, HT_Info *info) {
-  printf("\n\n- - - - - - - HASH TABLE RESIZING - - - - - - -\n\n");
+  // printf("\n\n- - - - - - - HASH TABLE RESIZING - - - - - - -\n\n");
   int newSize = power(info->globalDepth);
 
   int *new_hash_table = (int *)malloc(newSize * sizeof(int));
@@ -501,9 +550,9 @@ void HashTable_resize(int **hash_table, HT_Info *info) {
   free(*hash_table);
   *hash_table = new_hash_table;
   
-  for (int i = 0; i < newSize; i++) {
-    printf("new_hash_table[%d] = %d\n", i, new_hash_table[i]);
-  }
+  // for (int i = 0; i < newSize; i++) {
+  //   printf("new_hash_table[%d] = %d\n", i, new_hash_table[i]);
+  // }
 }
 
 
