@@ -431,10 +431,60 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
 }
 
 HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
+    // Έλεγχος αν το αρχείο είναι ανοιχτό
+    if (openFiles[indexDesc].file_desc == -1) {
+        printf("Error: File is not open.\n");
+        return HT_ERROR;
+    }
+
+    // Λήψη του block που περιέχει τα μεταδεδομένα
+    BF_Block* infoBlock;
+    BF_Block_Init(&infoBlock);
+    CALL_BF(BF_GetBlock(openFiles[indexDesc].file_desc, 0, infoBlock));
+
+    // Παίρνω τα μεταδεδομένa
+    HT_Info* info = (HT_Info*)BF_Block_GetData(infoBlock);
+    printf("File Type: %s\n", info->fileType);
+    printf("File Name: %s\n", info->fileName);
+    printf("Hash Field: %s\n", info->hash_field);
+    printf("Total Number of Records: %d\n", info->total_num_of_recs);
+    printf("Number of Blocks: %d\n", info->num_of_blocks);
+    printf("Global Depth: %d\n", info->globalDepth);
+
+    // Επανάληψη για κάθε block και εκτύπωση των records
+    for (int i = 1; i < info->num_of_blocks; ++i) {
+        BF_Block* block;
+        BF_Block_Init(&block);
+
+        // Λήψη του block που περιέχει τα records
+        CALL_BF(BF_GetBlock(openFiles[indexDesc].file_desc, i, block));
+
+        // Παίρνω το block info
+        Block_Info* blockInfo = (Block_Info*)BF_Block_GetData(block);
+        printf("\nBlock ID: %d\n", blockInfo->block_id);
+        printf("Local Depth: %d\n", blockInfo->local_depth);
+        printf("Bucket Size: %d\n", blockInfo->bucket_size);
+        printf("Buddies: %d\n", blockInfo->buddies);
+
+        // Επανάληψη για κάθε record στο block και εκτύπωση
+        for (int j = 1; j <= blockInfo->bucket_size; ++j) {
+            Record* record = (Record*)((char*)blockInfo + j * sizeof(Record));
+            printf("ID: %d, Name: %s, Surname: %s, City: %s\n", record->id, record->name, record->surname, record->city);
+        }
+
+        // Unpin και καταστροφή του block
+        CALL_BF(BF_UnpinBlock(block));
+        BF_Block_Destroy(&block);
+    }
+
+    // Unpin και καταστροφή του block μεταδεδομένων
+    CALL_BF(BF_UnpinBlock(infoBlock));
+    BF_Block_Destroy(&infoBlock);
 
     return HT_OK;
-
 }
+
+
 
 
 

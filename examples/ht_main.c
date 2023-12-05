@@ -78,7 +78,7 @@ int main() {
   int indexDesc;
   CALL_OR_DIE(HT_CreateIndex(FILE_NAME, GLOBAL_DEPT));
   printf("main: HT_CreateIndex: OK\n");
-  // CALL_OR_DIE(HT_OpenIndex(FILE_NAME, &indexDesc)); 
+  CALL_OR_DIE(HT_OpenIndex(FILE_NAME, &indexDesc)); 
   printf("main: HT_OpenIndex: OK\nIndex: %d\n\n", indexDesc);
   
 
@@ -98,15 +98,15 @@ int main() {
     memcpy(record.city, cities[r], strlen(cities[r]) + 1);
 
     printf("\n\n%dh klhsh:\n", record.id+1);
-    // CALL_OR_DIE(HT_InsertEntry(indexDesc, record));
+    CALL_OR_DIE(HT_InsertEntry(indexDesc, record));
   }
   printf("\n\nmain: HT_InsertEntries: OK\n");
 
   printf("RUN PrintAllEntries\n");
   int id = rand() % RECORDS_NUM;
-  // CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id));
+  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id));
 
-  // CALL_OR_DIE(HT_CloseFile(indexDesc));
+  CALL_OR_DIE(HT_CloseFile(indexDesc));
   printf("main: HT_CloseFile: OK\n");
   
   BF_Close();
