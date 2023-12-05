@@ -13,17 +13,17 @@ typedef struct Record {
 	char surname[20];
 	char city[20];
 } Record;
-// #pragma pack(pop)  // Restore default packing alignment
+
 
 // Δομή που αποθηκεύει ορισμένες πληροφορίες σχετικά με ένα αρχείο (κατακερματισμού).
 typedef struct HT_Info {
 	char fileType [20];				// eg. 'hash' file
 	char fileName [20];
 	char hash_field [20];			// Το κλειδί του πίνακα κατακερματισμού (eg. id).
-	int fileDesc;
 	int total_num_of_recs;			// συνολικός αριθμός εγγραφών σε όλο το αρχείο
-	int num_of_blocks;				// συνολικός αριθμός μπλοκ στο Hash Table
 	int globalDepth;
+	int num_of_blocks;				// συνολικός αριθμός μπλοκ στο Hash Table
+	
 } HT_Info;
 
 
@@ -32,40 +32,9 @@ typedef struct Block_Info {
 	int bucket_size;					// αριθμός των records που περιέχει
 	int local_depth;					// τοπικό βάθος του bucket
 	// int hashvalue;						// temp variable for debugging
-	int buddiesBoolean;			// temp to see if it has any buddies
+	int buddies;						// πλήθος buddies
 } Block_Info;
 
-// typedef struct Directory {
-// 	// int bucket_owner_id[][2];		// αναγνωριστικός αριθμός του directory που έχει το bucket
-// 	int block_id;				// αναγνωριστικός αριθμός του μπλοκ στο οποίο βρίσκεται το directory.
-// 	int bucket_id;				// αναγνωριστικός αριθμός του bucket του directory
-//     int local_depth;			// συνολικός αριθμός εγγραφών στο bucket
-// 	int bucket_size;
-//     void *bucket;
-// 	int bucket_num;				// συνολικός αριθμός buckets στο Directory
-// 	int hash_value;				// αναγνωριστικός αριθμός bucket
-// 	int directory_size_bytes;	// sizeof(Bucket)
-// 	int buddies;				// 1: yes, 0: no
-// } Directory;
-
-
-// // Hash table structure
-// typedef struct HashTable {
-//     int block_id;				// αναγνωριστικός αριθμός του μπλοκ
-// 	int global_depth;      		// Global depth of the directory
-//     int num_of_buckets;
-// 	int* block_ids;			// αναγνωριστικός αριθμός όλων των directories
-// 	int HashTable_size;			// sizeof(HashTable)
-// } HashTable;
-
-
-typedef struct {
-	int fd;					// αναγνωριστικός αριθμός του αρχείου
-	char filename [20];
-	int *hashTable;
-	// void *INFO;
-	// BF_Block *infoBlock;
-} OpenFileInfo;
 
 
 
