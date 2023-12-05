@@ -468,8 +468,11 @@ HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
         // Επανάληψη για κάθε record στο block και εκτύπωση
         for (int j = 1; j <= blockInfo->bucket_size; ++j) {
             Record* record = (Record*)((char*)blockInfo + j * sizeof(Record));
-            printf("ID: %d, Name: %s, Surname: %s, City: %s\n", record->id, record->name, record->surname, record->city);
-        }
+            if (id == NULL || *id == record->id) {
+                printf("ID: %d, Name: %s, Surname: %s, City: %s\n", record->id, record->name, record->surname, record->city);
+            }        
+            
+          }
 
         // Unpin και καταστροφή του block
         CALL_BF(BF_UnpinBlock(block));
