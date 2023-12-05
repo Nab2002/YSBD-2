@@ -105,8 +105,18 @@ int main() {
   printf("RUN PrintAllEntries\n");
   int id = rand() % RECORDS_NUM;
   CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id));
+  //CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL));
+
+  printf("Hash Statistics:\n");
+
+  HT_ErrorCode statsErrorCode = HashStatistics(FILE_NAME);
+
 
   CALL_OR_DIE(HT_CloseFile(indexDesc));
+
+  
+
+
   printf("main: HT_CloseFile: OK\n");
   
   BF_Close();

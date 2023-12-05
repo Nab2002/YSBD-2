@@ -93,7 +93,7 @@ HT_ErrorCode HT_PrintAllEntries(
 	int *id 				/* τιμή του πεδίου κλειδιού προς αναζήτηση */
 	);
 
-
+HT_ErrorCode HashStatistics(char* filename);
 
 // Συναρτήσεις που δημιουργήσαμε:
 
