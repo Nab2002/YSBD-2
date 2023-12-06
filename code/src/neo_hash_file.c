@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 
 #include "bf.h"
@@ -88,6 +89,7 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int depth) {
   info.total_num_of_recs = 0;
   info.num_of_blocks = 1;
   info.globalDepth = depth;
+  info.hashTable_size = TABLE_SIZE;
 
   memset(infoData, 0, BF_BLOCK_SIZE);
   memcpy(infoData, &info, sizeof(HT_Info));
@@ -142,6 +144,64 @@ HT_ErrorCode HT_CloseFile(int indexDesc) {
   if (indexDesc < 0 || indexDesc >= MAX_OPEN_FILES || openFiles[indexDesc].file_desc == -1) {
     return HT_ERROR;
   }
+
+  HT_Info* info = (HT_Info *)BF_Block_GetData(openFiles[indexDesc].info);
+  
+  
+  /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+  /* * * * *  Αποθήκευση του πίνακα κατακερματισμού στο αρχείο.  * * * * */
+  /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+  
+  // Ένα block τύπου BF_Block* μπορεί να αποθηκεύσει BF_BLOCK_SIZE / sizeof(int) θέσεις πίνακα.
+  // Στην προκειμένη περίπτωση 512 / 4 = 128.
+  // Ο πίνακας κατακερματισμού μας αποτελείται από info->hashTable_size θέσεις.
+  // Άρα, θα χρειαστούν info->hashTable_size / [(BF_BLOCK_SIZE-4) / sizeof(int)] blocks για την αποθηκευσή του.
+  // Στα 4 πρώτα bytes αποθηκέυουμε το είδος του block ('b' for bucket block, 'h' for hash table block).
+
+  double hashTableBlocks = info->hashTable_size / (double)((BF_BLOCK_SIZE - 4) / sizeof(int));
+  int hashBlocks = ceil(hashTableBlocks);
+  
+  printf("\n\n\n\nThe Hash Table needs %d blocks to be stored.\n\n\n", hashBlocks);
+  char h = 'h';
+  BF_Block *block;
+  HashStoring hashArray;
+  void *data;
+
+  int k = 0;
+  int count = 0;
+  for(int i = 0; i < hashBlocks; i++) {
+    BF_Block_Init(&block);
+    CALL_BF(BF_AllocateBlock(openFiles[indexDesc].file_desc, block));
+    data = BF_Block_GetData(block);
+
+    memset(data, 0, BF_BLOCK_SIZE);
+    memcpy(data, &h, sizeof(char));
+
+    // int count = 0;
+    int l = 0;
+    for (int j = 4; j < BF_BLOCK_SIZE && l < info->hashTable_size; j += sizeof(int)) {
+      if (openFiles[indexDesc].hashTable != NULL) {
+        hashArray.hashTable[l] = openFiles[indexDesc].hashTable[l + k];
+      } else {
+        printf("Malakia!\n");
+      }
+      l++;
+      count++;
+    }
+
+    
+
+    BF_Block_SetDirty(block);
+    CALL_BF(BF_UnpinBlock(block));
+    BF_Block_Destroy(&block);
+
+    if(info->hashTable_size-count>0)
+      k += count;
+    else
+      k = info->hashTable_size-count;
+  }
+
+
   BF_Block_SetDirty(openFiles[indexDesc].info);
   CALL_BF(BF_UnpinBlock(openFiles[indexDesc].info));
   BF_Block_Destroy(&openFiles[indexDesc].info);
@@ -604,10 +664,14 @@ void HashTable_resize(int** hash_table, HT_Info *info) {
   int *new_hash_table = (int *)malloc(newSize * sizeof(int));
   
   int i = 0;
-  // Copy old elements to the new memory location
+
+  // Περνάμε τα δεδομένα του παλιού πίνακα στον καινούριο.
+  // Σε κάθε παλιά θέση, μετά τον διπλασιασμό αντιστοιχούν 2 θέσεις:
+  // η x<<1 και η (x<<1)+1.
+  // Στην αντιγραφή των δεδομένων από τον παλιό στον καινούριο,
+  // τοποθετούμε τα δεδομένα των παλιών θέσεων στις θέσεις x<<1
+  // και αρχικοποιούμε τις (x<<1)+1 με -1.
   for (int j = 0; j < newSize / 2; j ++) {
-    // if(hash_table[j] == NULL)
-    //   break;
     new_hash_table[i] = (*hash_table)[j];
     i += 2 ;
   }
@@ -619,8 +683,12 @@ void HashTable_resize(int** hash_table, HT_Info *info) {
 
   }
 
-  // Update the hash table pointer to point to the new memory
+  info->hashTable_size = newSize;
+
+  // Αποδεσμεύουμε τον παλιό πίνακα.
   free(*hash_table);
+
+  // Ο πίνακας δείχνει πλέον στην διεύθυνση του καινούριου.
   *hash_table = new_hash_table;
   
   // for (int i = 0; i < newSize; i++) {
