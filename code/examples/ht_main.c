@@ -5,7 +5,7 @@
 #include "bf.h"
 #include "hash_file.h"
 
-#define RECORDS_NUM 100           // you can change it if you want
+#define RECORDS_NUM 50000           // you can change it if you want
 #define GLOBAL_DEPT 1           // initial global depth = 1
 #define FILE_NAME "data.db"
 
@@ -70,23 +70,20 @@ int main() {
   //
   printf("size of Record: %ld\n", sizeof(Record));
   printf("size of block: %d\n", BF_BLOCK_SIZE);
-  printf("maximum number of records in each block: %ld\nstorage left: %ld\n\n\n", BF_BLOCK_SIZE/sizeof(Record), BF_BLOCK_SIZE - (BF_BLOCK_SIZE/sizeof(Record))*sizeof(Record));
+  printf("maximum number of records in each block: %ld\nstorage left: %ld\n\n\n", (BF_BLOCK_SIZE/sizeof(Record))-1, BF_BLOCK_SIZE - ((BF_BLOCK_SIZE/sizeof(Record))-1)*sizeof(Record));
   //
 
   CALL_OR_DIE(HT_Init());
 
   int indexDesc;
   CALL_OR_DIE(HT_CreateIndex(FILE_NAME, GLOBAL_DEPT));
-  printf("main: HT_CreateIndex: OK\n");
   CALL_OR_DIE(HT_OpenIndex(FILE_NAME, &indexDesc)); 
-  printf("main: HT_OpenIndex: OK\nIndex: %d\n\n", indexDesc);
   
 
   Record record;
   
   srand(12569874);
   int r;
-  printf("Insert Entries\n");
   for (int id = 0; id < RECORDS_NUM; ++id) {
     // create a record
     record.id = id;
@@ -97,27 +94,20 @@ int main() {
     r = rand() % 10;
     memcpy(record.city, cities[r], strlen(cities[r]) + 1);
 
-    printf("\n\n- - - - - - - - %d H  K L H S H - - - - - - - -\n", record.id+1);
     CALL_OR_DIE(HT_InsertEntry(indexDesc, record));
   }
-  printf("\n\nmain: HT_InsertEntries: OK\n");
 
-  printf("RUN PrintAllEntries\n");
+  printf("\n\nRUN PrintAllEntries\n");
   int id = rand() % RECORDS_NUM;
+  printf("\nLooking for record with id: %d\n", id);
   CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id));
-  //CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL));
 
-  printf("Hash Statistics:\n");
-
-  HT_ErrorCode statsErrorCode = HashStatistics(FILE_NAME);
-
+  printf("\n\nCalling HT_PrintAllEntries() with a NULL id:\n");
+  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL));
+  
+  printf("\n\nUsing Hash Statistics:\n");
+  CALL_OR_DIE(HashStatistics(FILE_NAME));
 
   CALL_OR_DIE(HT_CloseFile(indexDesc));
-
-  
-
-
-  printf("main: HT_CloseFile: OK\n");
-  
   BF_Close();
 }
