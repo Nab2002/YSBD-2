@@ -20,25 +20,27 @@
     return HT_ERROR;        \
   }                         \
 }
-static struct {
+static struct Openfiles{
   int file_desc;
   int *hashTable;
   BF_Block *info;
+  int numOfIndexes;
 } openFiles[MAX_OPEN_FILES];
+
 
 HT_ErrorCode HT_Init() {
   BF_Init(LRU);
-  // Αρχικοποιύμε κάθε θέση του πίνακα.
+  // Αρχικοποιούμε κάθε θέση του πίνακα.
   for (int i = 0; i < MAX_OPEN_FILES; ++i) {
     openFiles[i].file_desc = -1;
     
     if (i == 0) {
       // Δεσμεύουμε δυναμικά μνήμη ανάλογα με το TABLE_SIZE.
       openFiles[i].hashTable = (int *)malloc(TABLE_SIZE * sizeof(int));
+      openFiles[i].numOfIndexes = TABLE_SIZE;
       if (openFiles[i].hashTable == NULL) {
         return HT_ERROR;
       }
-      
       for (int j = 0; j < TABLE_SIZE; ++j) {
         openFiles[i].hashTable[j] = -1;
         // printf("openFiles[%d].hashTable[%d] = %d\n", i, j, openFiles[i].hashTable[j]);
@@ -61,7 +63,7 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int depth) {
 
   // Ανοίγουμε το αρχείο και επιστρέφουμε το file descriptor του στην μεταβλητή file_desc.
   int file_desc;
-  CALL_BF(BF_OpenFile(filename, &file_desc)); // Open the created file
+  CALL_BF(BF_OpenFile(filename, &file_desc));
 
   // Ορίζουμε, αρχικοποιούμε και δεσμεύουμε ένα block, για τα μεταδεδομένα του αρχείου.
   BF_Block *infoBlock;
@@ -73,6 +75,7 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int depth) {
   // Ορίζουμε έναν δείκτη που δείχνει στα δεδομένα του block των μεταδεδομένων.
   void *infoData = BF_Block_GetData(infoBlock);
         
+  // Περνάμε τα μεταδεδομένα στο 1ο block του αρχείου.      
   strncpy(info.fileType, "Hash File", sizeof(info.fileType));
   info.fileType[sizeof(info.fileType) - 1] = '\0';
   
@@ -125,14 +128,15 @@ HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc){
 
   *indexDesc = i;  // Store the index of the open file
 
-  // openFiles[*indexDesc].info = (BF_Block *)malloc(sizeof(BF_Block *));
+  // Initialising the "info" block
   BF_Block_Init(&openFiles[*indexDesc].info);
+
+  // Getting the block in the global array.
   CALL_BF(BF_GetBlock(openFiles[*indexDesc].file_desc, 0, openFiles[*indexDesc].info));
   return HT_OK;
 }
 
 HT_ErrorCode HT_CloseFile(int indexDesc) {
-  
   // Ελέγχουμε αν ο δεικτής που μας δόθηκε αντιστοιχεί σε κάποια θέση θέση του πίνακα,
   // κι αν ναι, ελέγχουμε αν αυτή η θέση περιέχει κάποιο αρχείο.
   if (indexDesc < 0 || indexDesc >= MAX_OPEN_FILES || openFiles[indexDesc].file_desc == -1) {
@@ -169,17 +173,19 @@ HT_ErrorCode HT_CloseFile(int indexDesc) {
 /* * * * * * * * * HT_InsertEntry * * * * * * * * */
 HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
   int fd = openFiles[indexDesc].file_desc;
-  // printf("\n\nI N S E R T \n\n");
+  //// printf("\n\nI N S E R T \n\n");
 
   // Ο δείκτης *info δείχνει στα μεταδεδομένα του 1ου block.
   HT_Info *info = (HT_Info *)BF_Block_GetData(openFiles[indexDesc].info);
 
   // Εκτύπωση του πίνακα κατακερατισμού.
-  // Print_Hash_Table(openFiles[indexDesc].hashTable, info);
+  //// Print_Hash_Table(openFiles[indexDesc].hashTable, info);
 
   // Υπολογίζουμε την τιμή κατακερματισμού του εκάστοτε record.id.
   int hashValue = hash(record.id, info->globalDepth);
-  // printf("hash value: %d, info->globalDepth%d\n\n", hashValue, info->globalDepth);
+  if(openFiles[indexDesc].numOfIndexes < power(info->globalDepth))
+    HashTable_resize(&openFiles[indexDesc].hashTable, info);
+  //// printf("hash value: %d, info->globalDepth%d\n\n", hashValue, info->globalDepth);
 
   BF_Block *bucket;           // Το bucket στο οποίο αντστοιχεί το record, με βάση το αρχικό hashvalue του, άσχετα με το αν χωράει σε αυτό.
   BF_Block *newBucket;        // Σε περίπτωση που χρειαστεί να δημιουργήσυμε καινούριο bucket.
@@ -200,7 +206,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
     blockInfo.block_id = info->num_of_blocks - 1;
     openFiles[indexDesc].hashTable[hashValue] = blockInfo.block_id;
     blockInfo.bucket_size = 0;
-    blockInfo.local_depth = 1;
+    blockInfo.local_depth = info->globalDepth;
     blockInfo.buddies = 0;
 
     // "Καθαρίζουμε" το καινούριο block από τυχόντα σκουπίδια που περιείχε η μνήμη.
@@ -236,8 +242,8 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
     // Αυξάνουμε το bucket_size, και το total_num_of_recs
     ptr->bucket_size ++;
     info->total_num_of_recs ++;
-    // printf("hash: %d, ID: %d, name: %s, surname: %s, city: %s\n", hashValue, recordinBlock->id, recordinBlock->name, recordinBlock->surname, recordinBlock->city);
-    // printf("Eggrafes mexri stigmhs sto bucket %d: %d\n\n", hashValue, ptr->bucket_size);
+    // printf("RECORD TO BE INSERTED:\nhash: %d, ID: %d, name: %s, surname: %s, city: %s\n", hashValue, recordinBlock->id, recordinBlock->name, recordinBlock->surname, recordinBlock->city);
+    // printf("Records inside bucket (id: %d): %d\n\n", ptr->block_id, ptr->bucket_size);
     
     // Κάνουμε το bucket (block) dirty, unpin και destroy, αφού δεν θα το χρειαστούμε άλλο
     BF_Block_SetDirty(bucket);
@@ -254,15 +260,20 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
       // (1) Διπλασιάζουμε τον πίνακα κατακερματισμού.
       // printf("Eggrafh pros eisagwgh:\nhash: %d, ID: %d, name: %s, surname: %s, city: %s\n\nPalies eggrafes:\n", hashValue, record.id, record.name, record.surname, record.city);
 
+      // Αυξάνουμε το ολικό βαθός του πίνακα και το τοπικό βάθος του κουβά.
       info->globalDepth ++;
       ptr->local_depth ++;
       
+      // Διπλασιάζουμε τον πίνακα κατακερματισμού.
       HashTable_resize(&openFiles[indexDesc].hashTable, info);
 
+      // Αρχικοποιούμε και δεσμεύουμε ένα καινούριο bucket για την νέα εγγραφή.
       BF_Block_Init(&newBucket);
       CALL_BF(BF_AllocateBlock(fd, newBucket));
+      // Φέρνουμε τα δεδομένα στον δείκτη.
       newBucketData = BF_Block_GetData(newBucket);
 
+      // Αρχικοποιούμε τις τιμές.
       CALL_BF(BF_GetBlockCounter(fd, &info->num_of_blocks));
       blockInfo.block_id = info->num_of_blocks-1;
       
@@ -270,9 +281,10 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
       blockInfo.buddies = 0;
       blockInfo.local_depth = ptr->local_depth;
 
+      // Σε κάθε διπλασιασμό του πίνακα κατακερματισμού δημιουργείται το κελί cell<<1 και το κελί (cell<<1)+1.
+      // Η διεύθυνση του καινούριου μπλοκ που δεσμεύουμε είναι πάντα στην θέση (cell<<1)+1.
       if(hashValue & 1 == 1)
         openFiles[indexDesc].hashTable[hashValue] = blockInfo.block_id;
-        
       else
         openFiles[indexDesc].hashTable[(hashValue<<1)+1] = blockInfo.block_id;
 
@@ -372,27 +384,28 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
       else {
         // printf("- - - A N A D R O M H - - -\n");
 
-        BF_Block_SetDirty(newBucket);
-        CALL_BF(BF_UnpinBlock(newBucket));
-        BF_Block_Destroy(&newBucket);
+        // BF_Block_SetDirty(newBucket);
+        // CALL_BF(BF_UnpinBlock(newBucket));
+        // BF_Block_Destroy(&newBucket);
 
-        BF_Block_SetDirty(bucket);
-        CALL_BF(BF_UnpinBlock(bucket));
-        BF_Block_Destroy(&bucket);
-        info->total_num_of_recs--;
+        // BF_Block_SetDirty(bucket);
+        // CALL_BF(BF_UnpinBlock(bucket));
+        // BF_Block_Destroy(&bucket);
+        // info->total_num_of_recs--;
+
         HT_InsertEntry(indexDesc, *records);  
         flag = 1;
 
-        BF_Block_Init(&bucket);
-        CALL_BF(BF_GetBlock(fd, oldBucket_id, bucket));
-        bucketData = BF_Block_GetData(bucket);
-        ptr = (Block_Info *)bucketData;
+        // BF_Block_Init(&bucket);
+        // CALL_BF(BF_GetBlock(fd, oldBucket_id, bucket));
+        // bucketData = BF_Block_GetData(bucket);
+        // ptr = (Block_Info *)bucketData;
 
         
-        BF_Block_Init(&newBucket);
-        CALL_BF(BF_GetBlock(fd, newBucket_id, newBucket));
-        bucketData = BF_Block_GetData(newBucket);
-        ptrNew = (Block_Info *)newBucketData;
+        // BF_Block_Init(&newBucket);
+        // CALL_BF(BF_GetBlock(fd, newBucket_id, newBucket));
+        // bucketData = BF_Block_GetData(newBucket);
+        // ptrNew = (Block_Info *)newBucketData;
       }
       // Ελέγχουμε αν για την συγκεκριμένη εγγραφή πραγματοποιήθηκε αναδρομή.
       if(!flag) {
@@ -414,8 +427,8 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
         }
         currentBucket->bucket_size ++;
 
-        // printf("hash: %d, ID: %d, name: %s, surname: %s, city: %s\n", hashValue, records->id, records->name, records->surname, records->city);
-        // printf("Eggrafes mexri stigmhs sto bucket me id %d: %d\n\n", currentBucket->block_id, (currentBucket->bucket_size));
+        // printf("RECORD TO BE INSERTED:\nhash: %d, ID: %d, name: %s, surname: %s, city: %s\n", hashValue, records->id, records->name, records->surname, records->city);
+        // printf("Records inside bucket (id: %d): %d\n\n", currentBucket->block_id, (currentBucket->bucket_size));
       }
     }
   }
@@ -455,7 +468,12 @@ HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
 
         // Παίρνω το block info
         Block_Info* blockInfo = (Block_Info*)BF_Block_GetData(block);
-
+        if(id == NULL) {
+          printf("\nBlock ID: %d\n", blockInfo->block_id);
+          printf("Local Depth: %d\n", blockInfo->local_depth);
+          printf("Bucket Size: %d\n", blockInfo->bucket_size);
+          printf("Buddies: %d\n", blockInfo->buddies);
+        }
         // Επανάληψη για κάθε record στο block και εκτύπωση
         for (int j = 1; j <= blockInfo->bucket_size; ++j) {
             Record* record = (Record*)((char*)blockInfo + j * sizeof(Record));
@@ -502,7 +520,7 @@ HT_ErrorCode HashStatistics(char* filename) {
     BF_Block* block;
     BF_Block_Init(&block);
 
-  // Παίρνω το block που περιέχει τα records
+    // Παίρνω το block που περιέχει τα records
     CALL_BF(BF_GetBlock(fd, i, block));
     Block_Info* blockInfo = (Block_Info*)BF_Block_GetData(block);
 
@@ -531,6 +549,7 @@ HT_ErrorCode HashStatistics(char* filename) {
 
   // Απελευθερώνω το info block
   CALL_BF(BF_UnpinBlock(infoBlock));
+  BF_Block_Destroy(&infoBlock);
  
   return HT_OK;
 }
@@ -544,7 +563,7 @@ HT_ErrorCode HashStatistics(char* filename) {
 
 // Hash function
 unsigned int hash(unsigned int key, unsigned int depth) {
-  unsigned int hashValue = key * 1000000171;
+  unsigned int hashValue = key * 999999937;
   hashValue = hashValue >> (32 - depth);
   return hashValue;
 }
@@ -578,7 +597,7 @@ int power(int num) {
 	return two;
 }
 
-void HashTable_resize(int **hash_table, HT_Info *info) {
+void HashTable_resize(int** hash_table, HT_Info *info) {
   // printf("\n\n- - - - - - - HASH TABLE RESIZING - - - - - - -\n\n");
   int newSize = power(info->globalDepth);
 
@@ -587,6 +606,8 @@ void HashTable_resize(int **hash_table, HT_Info *info) {
   int i = 0;
   // Copy old elements to the new memory location
   for (int j = 0; j < newSize / 2; j ++) {
+    // if(hash_table[j] == NULL)
+    //   break;
     new_hash_table[i] = (*hash_table)[j];
     i += 2 ;
   }
