@@ -55,8 +55,10 @@ HT_ErrorCode HT_Init() {
 }
 
 HT_ErrorCode HT_CreateIndex(const char *filename, int depth) {
-  // Ελέγχουμε αν το αρχείο υπάρχει ήδη.
+  // Δημιουργούμε το αρχείο.
   BF_ErrorCode code = BF_CreateFile(filename);
+  
+  // Ελέγχουμε αν το αρχείο υπάρχει ήδη.
   if (code == BF_FILE_ALREADY_EXISTS) {
     printf("ERROR. The file you are trying to create already exists!\n\n");
     return HT_ERROR;
@@ -339,8 +341,8 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
       blockInfo.buddies = 0;
       blockInfo.local_depth = ptr->local_depth;
 
-      // Σε κάθε διπλασιασμό του πίνακα κατακερματισμού δημιουργείται το κελί cell<<1 και το κελί (cell<<1)+1.
-      // Η διεύθυνση του καινούριου μπλοκ που δεσμεύουμε είναι πάντα στην θέση (cell<<1)+1.
+      // Σε κάθε διπλασιασμό του πίνακα κατακερματισμού δημιουργείται η θέση key<<1 και το κελί (key<<1)+1.
+      // Η διεύθυνση του καινούριου μπλοκ που δεσμεύουμε είναι πάντα στην θέση (key<<1)+1.
       if(hashValue & 1 == 1)
         openFiles[indexDesc].hashTable[hashValue] = blockInfo.block_id;
       else
