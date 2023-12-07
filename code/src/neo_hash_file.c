@@ -109,20 +109,20 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int depth) {
 
 
 HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc){
-  // Find an available slot in the open_files array
+  //Ελέγχουμε αν υπάρχει διαθέσιμη θέση στον πίνακα open_files. 
   int i;
   for (i = 0; i < MAX_OPEN_FILES; ++i) {
     if (openFiles[i].file_desc == -1) {
-      break;  // Found an available slot
+      break;  // Βρέθηκε διαθέσιμη θέση
     }
   }
 
   if (i == MAX_OPEN_FILES) {
     printf("MAX OPEN FILES, NO MORE SLOTS AVAILABLE\n");
-    return HT_ERROR; // No available slots
+    return HT_ERROR; // Δεν υπάρχει διαθέσιμη θέση
   }
 
-  // Open the file and store the file descriptor in the open_files array
+  // Ανοίγουμε το αρχείο και αποθηκεύουμε το  file descriptor στον πίνακα open_files.
   BF_ErrorCode bf_code = BF_OpenFile(fileName, &openFiles[i].file_desc);
   printf("openFiles[%d].file_desc: %d\n", i, openFiles[i].file_desc);
   if (bf_code != BF_OK) {
@@ -130,12 +130,12 @@ HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc){
     return HT_ERROR;  // Opening file failed
   }
 
-  *indexDesc = i;  // Store the index of the open file
+  *indexDesc = i;  //Αποθηκεύουμε τον δείκτη του ανοιχτού αρχείου.
 
-  // Initialising the "info" block
+  //Αρχικοποιούμε το μπλοκ των μεταδεδομένων του εκάστοτε μπλοκ.
   BF_Block_Init(&openFiles[*indexDesc].info);
 
-  // Getting the block in the global array.
+  //Φέρνουμε το πρωτο μπλοκ στον πίνακα.
   CALL_BF(BF_GetBlock(openFiles[*indexDesc].file_desc, 0, openFiles[*indexDesc].info));
   return HT_OK;
 }
