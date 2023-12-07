@@ -444,28 +444,9 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
       else {
         // printf("- - - A N A D R O M H - - -\n");
 
-        // BF_Block_SetDirty(newBucket);
-        // CALL_BF(BF_UnpinBlock(newBucket));
-        // BF_Block_Destroy(&newBucket);
-
-        // BF_Block_SetDirty(bucket);
-        // CALL_BF(BF_UnpinBlock(bucket));
-        // BF_Block_Destroy(&bucket);
-        // info->total_num_of_recs--;
-
         HT_InsertEntry(indexDesc, *records);  
         flag = 1;
 
-        // BF_Block_Init(&bucket);
-        // CALL_BF(BF_GetBlock(fd, oldBucket_id, bucket));
-        // bucketData = BF_Block_GetData(bucket);
-        // ptr = (Block_Info *)bucketData;
-
-        
-        // BF_Block_Init(&newBucket);
-        // CALL_BF(BF_GetBlock(fd, newBucket_id, newBucket));
-        // bucketData = BF_Block_GetData(newBucket);
-        // ptrNew = (Block_Info *)newBucketData;
       }
       // Ελέγχουμε αν για την συγκεκριμένη εγγραφή πραγματοποιήθηκε αναδρομή.
       if(!flag) {
