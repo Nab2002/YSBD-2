@@ -182,8 +182,6 @@ HT_ErrorCode HT_CloseFile(int indexDesc) {
     for (int j = 4; j < BF_BLOCK_SIZE && l < info->hashTable_size; j += sizeof(int)) {
       if (openFiles[indexDesc].hashTable != NULL) {
         hashArray.hashTable[l] = openFiles[indexDesc].hashTable[l + k];
-      } else {
-        printf("Malakia!\n");
       }
       l++;
       count++;
